@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Télécommande</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 20px;
+				background-color: #f5f5f5;
+			}
+
+			h1 {
+				color: #333;
+			}
+
+			h2 {
+				color: #555;
+				margin-top: 30px;
+				border-bottom: 2px solid #333;
+				padding-bottom: 10px;
+			}
+
+			.controls {
+				background: white;
+				padding: 20px;
+				border-radius: 8px;
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+				margin-bottom: 20px;
+			}
+
+			button {
+				background-color: #4caf50;
+				border: none;
+				color: white;
+				padding: 12px 24px;
+				text-align: center;
+				text-decoration: none;
+				display: inline-block;
+				font-size: 16px;
+				margin: 4px 2px;
+				cursor: pointer;
+				border-radius: 4px;
+				transition: background-color 0.3s;
+			}
+
+			button:hover {
+				background-color: #45a049;
+			}
+
+			button:active {
+				background-color: #3d8b40;
+			}
+
+			.clients-section {
+				background: white;
+				padding: 20px;
+				border-radius: 8px;
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+			}
+
+			.status {
+				display: inline-block;
+				padding: 4px 12px;
+				border-radius: 12px;
+				font-size: 14px;
+				font-weight: bold;
+				margin-left: 10px;
+			}
+
+			.status.connected {
+				background-color: #4caf50;
+				color: white;
+			}
+
+			.status.disconnected {
+				background-color: #f44336;
+				color: white;
+			}
+
+			#clientsList {
+				list-style: none;
+				padding: 0;
+			}
+
+			#clientsList li {
+				background: #f9f9f9;
+				margin: 10px 0;
+				padding: 15px;
+				border-radius: 4px;
+				border-left: 4px solid #4caf50;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			#clientsList li.commander {
+				border-left-color: #2196f3;
+				background: #e3f2fd;
+			}
+
+			#clientsList li.master {
+				border-left-color: #ff9800;
+				background: #fff3e0;
+				font-weight: bold;
+			}
+
+			.client-info {
+				flex-grow: 1;
+			}
+
+			.client-id {
+				font-weight: bold;
+				color: #333;
+				font-size: 16px;
+			}
+
+			.client-time {
+				color: #666;
+				font-size: 14px;
+				margin-top: 5px;
+			}
+
+			.client-badge {
+				background: #2196f3;
+				color: white;
+				padding: 4px 12px;
+				border-radius: 12px;
+				font-size: 12px;
+				font-weight: bold;
+				margin-left: 8px;
+			}
+
+			.client-badge.master {
+				background: #ff9800;
+			}
+
+			.total-count {
+				font-size: 18px;
+				color: #666;
+				margin-top: 10px;
+			}
+
+			.empty-state {
+				text-align: center;
+				color: #999;
+				padding: 40px;
+				font-style: italic;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Télécommande</h1>
+
+		<div class="controls">
+			<h2>
+				Contrôles
+				<span id="connectionStatus" class="status disconnected"
+					>Déconnecté</span
+				>
+			</h2>
+			<button id="play">▶ Play</button>
+			<button id="pause">⏸ Pause</button>
+			<button id="stop">⏹ Stop</button>
+			<button id="rewind">⏪ Rewind</button>
+			<button id="forward">⏩ Forward</button>
+			<button id="reload">🔄 Reload</button>
+		</div>
+
+		<div class="clients-section">
+			<h2>
+				Appareils connectés
+				<span id="clientCount" class="total-count">(0)</span>
+			</h2>
+			<ul id="clientsList">
+				<li class="empty-state">Aucun appareil connecté</li>
+			</ul>
+		</div>
+	</body>
+	<script>
+		const ws = new WebSocket("ws://localhost:3000");
+		const connectionStatus = document.getElementById("connectionStatus");
+		const clientsList = document.getElementById("clientsList");
+		const clientCount = document.getElementById("clientCount");
+
+		ws.onopen = () => {
+			console.log("WebSocket connected");
+			connectionStatus.textContent = "Connecté";
+			connectionStatus.className = "status connected";
+
+			// Identify as commander to receive client updates
+			ws.send(JSON.stringify({ type: "identify", role: "commander" }));
+		};
+
+		ws.onclose = () => {
+			console.log("WebSocket disconnected");
+			connectionStatus.textContent = "Déconnecté";
+			connectionStatus.className = "status disconnected";
+		};
+
+		ws.onerror = (error) => {
+			console.error("WebSocket error:", error);
+			connectionStatus.textContent = "Erreur";
+			connectionStatus.className = "status disconnected";
+		};
+
+		ws.onmessage = (event) => {
+			const data = JSON.parse(event.data);
+			console.log("Received:", data);
+
+			if (data.type === "clientsUpdate") {
+				updateClientsList(data.clients, data.total);
+			}
+		};
+
+		function updateClientsList(clients, total) {
+			clientCount.textContent = `(${total})`;
+
+			if (clients.length === 0) {
+				clientsList.innerHTML =
+					'<li class="empty-state">Aucun appareil connecté</li>';
+				return;
+			}
+
+			// Sort clients: master first, then commanders, then by ID
+			clients.sort((a, b) => {
+				// Master devices first
+				if (a.isMaster !== b.isMaster) {
+					return a.isMaster ? -1 : 1;
+				}
+				// Then commanders
+				if (a.isCommander !== b.isCommander) {
+					return a.isCommander ? -1 : 1;
+				}
+				// Then by ID
+				return a.id - b.id;
+			});
+
+			clientsList.innerHTML = clients
+				.map((client) => {
+					const connectedTime = new Date(client.connectedAt);
+					const timeString = connectedTime.toLocaleTimeString("fr-FR");
+					const dateString = connectedTime.toLocaleDateString("fr-FR");
+
+					// Determine class and badges
+					let classes = [];
+					let badges = [];
+
+					if (client.isMaster) {
+						classes.push("master");
+						badges.push(
+							'<span class="client-badge master">🎵 MASTER (Audio Reference)</span>'
+						);
+					}
+					if (client.isCommander) {
+						classes.push("commander");
+						badges.push('<span class="client-badge">Commander</span>');
+					}
+
+					const classString = classes.join(" ");
+					const badgesString = badges.join("");
+
+					return `
+					<li class="${classString}">
+						<div class="client-info">
+							<div class="client-id">Appareil #${client.id}</div>
+							<div class="client-time">Connecté à ${timeString} le ${dateString}</div>
+						</div>
+						<div>
+							${badgesString}
+						</div>
+					</li>
+				`;
+				})
+				.join("");
+		}
+
+		const playButton = document.getElementById("play");
+		const pauseButton = document.getElementById("pause");
+		const stopButton = document.getElementById("stop");
+		const rewindButton = document.getElementById("rewind");
+		const forwardButton = document.getElementById("forward");
+		const reloadButton = document.getElementById("reload");
+
+		playButton.addEventListener("click", () => {
+			ws.send(JSON.stringify({ type: "play", video: "video-vertical" }));
+		});
+
+		pauseButton.addEventListener("click", () => {
+			ws.send(JSON.stringify({ type: "pause" }));
+		});
+
+		stopButton.addEventListener("click", () => {
+			ws.send(JSON.stringify({ type: "stop" }));
+		});
+
+		reloadButton.addEventListener("click", () => {
+			ws.send(JSON.stringify({ type: "reload" }));
+		});
+	</script>
+</html>

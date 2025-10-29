@@ -1,0 +1,6 @@
+{
+	"watch": ["server.js"],
+	"ext": "js,json",
+	"ignore": ["node_modules", "videos", "*.mp4", "test-video.mp4"],
+	"exec": "node server.js"
+}
