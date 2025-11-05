@@ -5,8 +5,9 @@ const { join } = require("path");
 const timesyncServer = require("timesync/server");
 const {
 	scanMediaDirectories,
-	getFolderNames,
-	getFolderUrls,
+	getProjectNames,
+	getProject,
+	getAllThumbnails,
 	getMediaSummary,
 } = require("./js/server/mediaScanner");
 
@@ -14,19 +15,42 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-let currentSource = "0";
-const videosPath = join(__dirname, "videos");
+let currentSource = "0"; // Will be updated after scanning media
+const mediaPath = join(__dirname, "videos");
 
 // Scan media directories on startup
 let mediaCatalog = {};
 try {
-	mediaCatalog = scanMediaDirectories(videosPath);
+	mediaCatalog = scanMediaDirectories(mediaPath);
 	const summary = getMediaSummary(mediaCatalog);
 	console.log("Media catalog loaded:");
-	console.log("MP4 folders:", summary.mp4.folders);
-	console.log("PNG Sequence folders:", summary.png_sequence.folders);
-	console.log(`Total MP4 files: ${summary.mp4.totalFiles}`);
-	console.log(`Total PNG files: ${summary.png_sequence.totalFiles}`);
+	console.log(`Found ${summary.projectCount} project(s)`);
+	summary.projects.forEach((proj) => {
+		console.log(
+			`  - ${proj.name}: poster(${proj.counts.poster}), phone(${
+				proj.counts.phone
+			}), music(${proj.counts.music}), billboard(${
+				proj.counts.billboard
+			}), album(${proj.counts.album}), thumb(${proj.hasThumb ? "yes" : "no"})`
+		);
+	});
+
+	// Set default source to first project's first available media type
+	if (summary.projects.length > 0) {
+		const firstProject = summary.projects[0];
+		let mediaType = null;
+
+		// Prioritize media types: poster > phone > billboard > album
+		if (firstProject.hasPoster) mediaType = "poster";
+		else if (firstProject.hasPhone) mediaType = "phone";
+		else if (firstProject.hasBillboard) mediaType = "billboard";
+		else if (firstProject.hasAlbum) mediaType = "album/1"; // Default to album subfolder 1
+
+		if (mediaType) {
+			currentSource = `${firstProject.name}/${mediaType}`;
+			console.log(`Default source set to: ${currentSource}`);
+		}
+	}
 } catch (error) {
 	console.error("Error scanning media directories:", error);
 }
@@ -40,22 +64,25 @@ let clientIdCounter = 0;
 // Serve static files (HTML, CSS, JS)
 app.use(express.static(__dirname));
 
+// Serve node_modules for client-side dependencies
+app.use("/node_modules", express.static(join(__dirname, "node_modules")));
+
 // Serve index.html for root route
 app.get("/", (req, res) => {
 	res.sendFile(join(__dirname, "index.html"));
 });
+
+// Serve album-player.html
+app.get("/album-player", (req, res) => {
+	res.sendFile(join(__dirname, "album-player.html"));
+});
+
 app.use("/timesync", timesyncServer.requestHandler);
 
-// Serve MP4 files: /videos/mp4/{folder}/{file}
-app.use("/videos/mp4", express.static(join(__dirname, "videos/mp4")));
+// Serve all media files: /media/{project}/{type}/{file(s)}
+app.use("/media", express.static(join(__dirname, "videos")));
 
-// Serve PNG sequence files: /videos/png_sequence/{folder}/{file}
-app.use(
-	"/videos/png_sequence",
-	express.static(join(__dirname, "videos/png_sequence"))
-);
-
-// API endpoint to get media catalog
+// API: Get full media catalog
 app.get("/api/media", (req, res) => {
 	res.json({
 		catalog: mediaCatalog,
@@ -63,27 +90,77 @@ app.get("/api/media", (req, res) => {
 	});
 });
 
-// API endpoint to get folders for a specific type
-app.get("/api/media/:type/folders", (req, res) => {
-	const { type } = req.params;
-	const folders = getFolderNames(mediaCatalog, type);
-	res.json({ type, folders });
+// API: Get list of all projects
+app.get("/api/media/projects", (req, res) => {
+	const projects = getProjectNames(mediaCatalog);
+	res.json({ projects, count: projects.length });
 });
 
-// API endpoint to get URLs for a specific folder
-app.get("/api/media/:type/:folderName", (req, res) => {
-	const { type, folderName } = req.params;
-	const urls = getFolderUrls(mediaCatalog, type, folderName);
-	if (urls.length === 0) {
-		return res.status(404).json({ error: "Folder not found" });
+// API: Get specific project data
+app.get("/api/media/projects/:projectName", (req, res) => {
+	const { projectName } = req.params;
+	const project = getProject(mediaCatalog, projectName);
+
+	if (!project) {
+		return res.status(404).json({ error: "Project not found" });
 	}
-	res.json({ type, folderName, urls, count: urls.length });
+
+	res.json({ projectName, ...project });
 });
 
-// Keep old route for backward compatibility
-app.use(
-	"/video-vertical",
-	express.static(join(__dirname, "/videos/mp4/0/0.mp4"))
+// API: Get all thumbnails
+app.get("/api/media/thumbnails", (req, res) => {
+	const thumbnails = getAllThumbnails(mediaCatalog);
+	res.json({ thumbnails, count: thumbnails.length });
+});
+
+// API: Get specific media type from project
+// Supports: /api/media/projects/:projectName/:mediaType
+// Also supports album subfolders: /api/media/projects/:projectName/album/:subfolder
+app.get(
+	"/api/media/projects/:projectName/:mediaType/:subfolder?",
+	(req, res) => {
+		const { projectName, mediaType, subfolder } = req.params;
+		const project = getProject(mediaCatalog, projectName);
+
+		if (!project) {
+			return res.status(404).json({ error: "Project not found" });
+		}
+
+		const validTypes = [
+			"poster",
+			"phone",
+			"music",
+			"billboard",
+			"album",
+			"thumb",
+		];
+		if (!validTypes.includes(mediaType)) {
+			return res.status(400).json({
+				error: `Invalid media type. Must be one of: ${validTypes.join(", ")}`,
+			});
+		}
+
+		let mediaData = project[mediaType];
+
+		// Handle album subfolders
+		if (mediaType === "album" && subfolder) {
+			if (!mediaData || !mediaData[subfolder]) {
+				return res
+					.status(404)
+					.json({ error: `Album subfolder '${subfolder}' not found` });
+			}
+			mediaData = mediaData[subfolder];
+		}
+
+		if (!mediaData || (Array.isArray(mediaData) && mediaData.length === 0)) {
+			return res
+				.status(404)
+				.json({ error: `No ${mediaType} found for this project` });
+		}
+
+		res.json({ projectName, mediaType, data: mediaData });
+	}
 );
 
 // Broadcast message to all connected clients
@@ -219,6 +296,14 @@ wss.on("connection", (ws, req) => {
 					break;
 				case "stop":
 					broadcast({ type: "stop" }, true);
+					break;
+				case "setSource":
+					// Update current source and broadcast to all clients
+					if (data.source) {
+						currentSource = data.source;
+						console.log(`Source changed to: ${currentSource}`);
+						broadcast({ type: "source", source: currentSource }, true);
+					}
 					break;
 				default:
 					// Echo message back to sender only

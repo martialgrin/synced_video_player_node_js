@@ -1,16 +1,18 @@
 export const pngSequencePlayer = (container, isMaster) => {
 	let element = null;
-	let imagesArray = [];
+	let imagesArray = []; // Now stores URLs as strings
 	let frameIndex = 0;
 	let animationId = null;
 	let isPlaying = false;
-	const FPS = 24; // 12 frames per second
-	const FRAME_DURATION = 1000 / FPS; // ~83ms per frame
+	const FPS = 25; // 24 frames per second
+	const FRAME_DURATION = 1000 / FPS; // ~42ms per frame
 
 	const create = () => {
 		element = document.createElement("img");
 		element.id = "png-sequence-player";
 		element.style.width = "100%";
+		// Disable image smoothing for better performance
+		element.style.imageRendering = "auto";
 		return element;
 	};
 
@@ -18,11 +20,12 @@ export const pngSequencePlayer = (container, isMaster) => {
 		return element;
 	};
 
-	const setImages = (images) => {
-		imagesArray = images;
+	const setImages = (urls) => {
+		// URLs are now just strings, not Image objects
+		imagesArray = urls;
 		if (imagesArray.length > 0 && element) {
-			// Images are Image objects, extract the src URL
-			element.src = imagesArray[0].src;
+			// Set first frame directly from URL string
+			element.src = imagesArray[0];
 		}
 	};
 
@@ -43,8 +46,8 @@ export const pngSequencePlayer = (container, isMaster) => {
 			if (elapsed >= FRAME_DURATION) {
 				// Move to next frame (loop when reaching the end)
 				frameIndex = (frameIndex + 1) % imagesArray.length;
-				// Images are Image objects, extract the src URL
-				element.src = imagesArray[frameIndex].src;
+				// URLs are now strings, set directly
+				element.src = imagesArray[frameIndex];
 
 				// Compensate for any overtime to maintain consistent fps
 				lastFrameTime = currentTime - (elapsed % FRAME_DURATION);
@@ -68,8 +71,8 @@ export const pngSequencePlayer = (container, isMaster) => {
 		pause();
 		frameIndex = 0;
 		if (element && imagesArray.length > 0) {
-			// Images are Image objects, extract the src URL
-			element.src = imagesArray[0].src;
+			// URLs are strings, set directly
+			element.src = imagesArray[0];
 		}
 	};
 
@@ -79,8 +82,8 @@ export const pngSequencePlayer = (container, isMaster) => {
 		const targetFrame = Math.floor(time * FPS) % imagesArray.length;
 		frameIndex = targetFrame;
 		if (element && imagesArray.length > 0) {
-			// Images are Image objects, extract the src URL
-			element.src = imagesArray[frameIndex].src;
+			// URLs are strings, set directly
+			element.src = imagesArray[frameIndex];
 		}
 	};
 

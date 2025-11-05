@@ -2,14 +2,16 @@
  * Sync Manager - Handles synchronized playback across multiple clients
  * Uses server timesync as the single source of truth
  */
-export const syncManager = (getTimeSyncNow) => {
+export const syncManager = (getTimeSyncNow, isMaster = false) => {
 	let playbackStartTime = null; // Synchronized server time when playback started
 	let syncCheckInterval = null;
 	let player = null;
 	let isActive = false;
+	let audioElement = null; // Audio element for billboard sync
 
 	const SYNC_CHECK_INTERVAL = 1000; // Check sync every second
 	const SYNC_THRESHOLD = 0.1; // Resync if off by more than 100ms
+	const AUDIO_SYNC_THRESHOLD = 0.05; // Sync audio more precisely (50ms)
 
 	/**
 	 * Start synchronized playback
@@ -62,6 +64,7 @@ export const syncManager = (getTimeSyncNow) => {
 
 	/**
 	 * Check if player is in sync and adjust if needed
+	 * If audio element is present, keeps audio and visuals in sync
 	 */
 	const checkAndResync = () => {
 		if (!isActive || !player || !playbackStartTime) return;
@@ -69,6 +72,34 @@ export const syncManager = (getTimeSyncNow) => {
 		let rawExpectedTime = getCurrentPlaybackTime();
 		let actualTime = 0;
 		let duration = 0;
+
+		// MASTER WITH AUDIO: Audio is the reference, sync PNG sequence to it
+		if (isMaster && audioElement) {
+			const audioTime = audioElement.currentTime || 0;
+
+			// Get visual player's current time
+			if (player.getCurrentTime) {
+				actualTime = player.getCurrentTime();
+			}
+
+			const timeDiff = Math.abs(audioTime - actualTime);
+
+			if (timeDiff > SYNC_THRESHOLD) {
+				console.log(
+					`[SyncManager] MASTER: Syncing visuals to audio. Audio at ${audioTime.toFixed(
+						3
+					)}s, visuals at ${actualTime.toFixed(3)}s, diff: ${timeDiff.toFixed(
+						3
+					)}s`
+				);
+
+				// Sync PNG sequence to audio timeline
+				if (player.setCurrentTime) {
+					player.setCurrentTime(audioTime);
+				}
+			}
+			return; // Don't do standard sync for master
+		}
 
 		// Get actual time and duration from player
 		if (player.getCurrentTime) {
@@ -100,15 +131,14 @@ export const syncManager = (getTimeSyncNow) => {
 
 		const timeDiff = Math.abs(expectedTime - actualTime);
 
+		// Sync PNG sequence to expected time
 		if (timeDiff > SYNC_THRESHOLD) {
 			console.log(
-				`[SyncManager] Drift detected: ${timeDiff.toFixed(
+				`[SyncManager] Visual drift: ${timeDiff.toFixed(
 					3
 				)}s. Resyncing from ${actualTime.toFixed(3)}s to ${expectedTime.toFixed(
 					3
-				)}s (raw: ${rawExpectedTime.toFixed(3)}s, duration: ${duration.toFixed(
-					3
-				)}s)`
+				)}s`
 			);
 
 			// Resync the player
@@ -119,6 +149,25 @@ export const syncManager = (getTimeSyncNow) => {
 				player.getElement().currentTime !== undefined
 			) {
 				player.getElement().currentTime = expectedTime;
+			}
+		}
+
+		// SLAVE WITH AUDIO: Also sync audio to expected time
+		if (audioElement && !isMaster) {
+			const audioTime = audioElement.currentTime || 0;
+			const audioTimeDiff = Math.abs(expectedTime - audioTime);
+
+			if (audioTimeDiff > AUDIO_SYNC_THRESHOLD) {
+				console.log(
+					`[SyncManager] SLAVE: Audio drift: ${audioTimeDiff.toFixed(
+						3
+					)}s. Syncing audio from ${audioTime.toFixed(
+						3
+					)}s to ${expectedTime.toFixed(3)}s`
+				);
+
+				// Sync audio to expected time
+				audioElement.currentTime = expectedTime;
 			}
 		}
 	};
@@ -172,6 +221,23 @@ export const syncManager = (getTimeSyncNow) => {
 		}
 	};
 
+	/**
+	 * Set audio element for synchronization
+	 * @param {HTMLAudioElement} audio - Audio element to sync
+	 */
+	const setAudioElement = (audio) => {
+		audioElement = audio;
+		if (isMaster) {
+			console.log(
+				"[SyncManager] MASTER: Audio element registered as timing reference (visuals will sync to audio)"
+			);
+		} else {
+			console.log(
+				"[SyncManager] SLAVE: Audio element registered for sync (will be kept in sync with visuals)"
+			);
+		}
+	};
+
 	return {
 		startPlayback,
 		stopPlayback,
@@ -180,5 +246,6 @@ export const syncManager = (getTimeSyncNow) => {
 		checkAndResync,
 		forceResync,
 		handleOffsetChange,
+		setAudioElement,
 	};
 };

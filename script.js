@@ -108,7 +108,7 @@ function main() {
 		videoElement.id = "video-player";
 		videoElement.style.width = "100%";
 		videoElement.controls = true;
-		videoElement.muted = true;
+		videoElement.muted = false;
 		videoElement.playsinline = true;
 		// Support playsInline in Safari iOS
 		videoElement.playsInline = true;

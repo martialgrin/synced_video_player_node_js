@@ -1,0 +1,14 @@
+[
+	{
+		"title": "Album 1",
+		"video_url": "/media/Dynamic-ID/album/1/Album%20-%2010%20sec.mp4"
+	},
+	{
+		"title": "Album 2",
+		"video_url": "/media/Dynamic-ID/album/2/Album%20-%2010%20sec%202.mp4"
+	},
+	{
+		"title": "Album 3",
+		"video_url": "/media/Dynamic-ID/album/3/Album%20-%2010%20sec%203.mp4"
+	}
+]

@@ -63,15 +63,25 @@ export const playerManager = (type, isMaster, getTimeSyncNow) => {
 		}
 	};
 
+	// FIX the handleOffsetChange function to work with the syncManager
 	const handleOffsetChange = (offsetChange) => {
-		if (syncMgr) {
-			syncMgr.handleOffsetChange(offsetChange);
-		}
+		// messageMgr.showMessage(
+		// 	"Offset change detected: NOT USED FOR NOW " + offsetChange + "ms"
+		// );
+		// if (syncMgr) {
+		// 	syncMgr.handleOffsetChange(offsetChange);
+		// }
 	};
 
 	const forceResync = () => {
 		if (syncMgr) {
 			syncMgr.forceResync();
+		}
+	};
+
+	const setAudioElement = (audio) => {
+		if (syncMgr && syncMgr.setAudioElement) {
+			syncMgr.setAudioElement(audio);
 		}
 	};
 
@@ -83,5 +93,6 @@ export const playerManager = (type, isMaster, getTimeSyncNow) => {
 		stop,
 		handleOffsetChange,
 		forceResync,
+		setAudioElement, // For billboard devices to register audio element
 	};
 };
