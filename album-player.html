@@ -87,6 +87,67 @@
 			#message.show {
 				opacity: 1;
 			}
+
+			#masterControls {
+				position: fixed;
+				top: 30px;
+				right: 30px;
+				display: none;
+				flex-direction: column;
+				gap: 10px;
+				z-index: 100000;
+			}
+
+			#masterControls.show {
+				display: flex;
+			}
+
+			#masterControls button {
+				background: rgba(255, 255, 255, 0.9);
+				border: none;
+				padding: 12px 24px;
+				font-size: 16px;
+				font-weight: bold;
+				border-radius: 8px;
+				cursor: pointer;
+				transition: all 0.2s ease;
+				color: #000;
+			}
+
+			#masterControls button:hover {
+				background: #fff;
+				transform: scale(1.05);
+			}
+
+			#masterControls button:active {
+				transform: scale(0.95);
+			}
+
+			#playPauseBtn {
+				background: rgba(76, 175, 80, 0.9);
+				color: white;
+			}
+
+			#playPauseBtn:hover {
+				background: rgb(76, 175, 80);
+			}
+
+			#playPauseBtn.playing {
+				background: rgba(244, 67, 54, 0.9);
+			}
+
+			#playPauseBtn.playing:hover {
+				background: rgb(244, 67, 54);
+			}
+
+			#resetBtn {
+				background: rgba(33, 150, 243, 0.9);
+				color: white;
+			}
+
+			#resetBtn:hover {
+				background: rgb(33, 150, 243);
+			}
 		</style>
 	</head>
 	<body>
@@ -100,7 +161,11 @@
 		/>
 		<div id="container"></div>
 		<div id="message"></div>
+		<div id="masterControls">
+			<button id="playPauseBtn">▶ Play</button>
+			<button id="resetBtn">⏮ Reset</button>
+		</div>
 		<script src="/node_modules/timesync/dist/timesync.js"></script>
-		<script src="./albumPlayer.js" type="module"></script>
+		<script src="./js/albumPlayer/albumPlayer.js" type="module"></script>
 	</body>
 </html>

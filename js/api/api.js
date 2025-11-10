@@ -85,5 +85,13 @@ export const api = (_callback, isMaster = false) => {
 		return ts.now();
 	};
 
-	return { getTs };
+	const send = (message) => {
+		if (ws.readyState === WebSocket.OPEN) {
+			ws.send(JSON.stringify(message));
+		} else {
+			console.warn("WebSocket not open, cannot send message:", message);
+		}
+	};
+
+	return { getTs, ws, send };
 };

@@ -9,7 +9,7 @@ export const syncManager = (getTimeSyncNow, isMaster = false) => {
 	let isActive = false;
 	let audioElement = null; // Audio element for billboard sync
 
-	const SYNC_CHECK_INTERVAL = 1000; // Check sync every second
+	const SYNC_CHECK_INTERVAL = 10000; // Check sync every second
 	const SYNC_THRESHOLD = 0.1; // Resync if off by more than 100ms
 	const AUDIO_SYNC_THRESHOLD = 0.05; // Sync audio more precisely (50ms)
 

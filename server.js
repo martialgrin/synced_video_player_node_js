@@ -3,6 +3,7 @@ const { WebSocketServer } = require("ws");
 const { createServer } = require("http");
 const { join } = require("path");
 const timesyncServer = require("timesync/server");
+const cors = require("cors");
 const {
 	scanMediaDirectories,
 	getProjectNames,
@@ -60,6 +61,9 @@ const PORT = process.env.PORT || 3000;
 // Store all connected clients with metadata
 const clients = new Map(); // Map of ws -> client metadata
 let clientIdCounter = 0;
+
+// Enable CORS for all routes (required for iOS Safari and cross-origin requests)
+app.use(cors());
 
 // Serve static files (HTML, CSS, JS)
 app.use(express.static(__dirname));
@@ -269,8 +273,8 @@ wss.on("connection", (ws, req) => {
 					);
 					break;
 				case "play":
-					// Calculate target time: 5 seconds from now
-					const targetTime = Date.now() + 5000;
+					// Use targetTime from client if provided, otherwise calculate
+					const targetTime = data.targetTime || Date.now() + 5000;
 
 					// Broadcast play command to all clients with target time (excluding commanders)
 					broadcast(
@@ -278,14 +282,12 @@ wss.on("connection", (ws, req) => {
 							type: "play",
 							video: data.video || "video-vertical",
 							targetTime: targetTime,
-							delay: 5000,
+							delay: data.delay || 5000,
 						},
 						true
 					);
 					console.log(
-						`Broadcasting play command for ${
-							data.video || "video-vertical"
-						} at ${new Date(targetTime).toISOString()}`
+						`Broadcasting play command at ${new Date(targetTime).toISOString()}`
 					);
 					break;
 				case "pause":

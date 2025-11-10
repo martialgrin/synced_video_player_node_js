@@ -1,0 +1,20 @@
+export const CONFIG = {
+	BACKGROUND_IMAGE: "background.png",
+	PLANE_WIDTH: 256,
+	PLANE_HEIGHT: 256,
+	SLIDE_SPACING_X: 80,
+	SLIDE_ROTATION: 45 * (Math.PI / 180),
+	SLIDE_OFFSET_FACTOR: 0.6,
+	CAMERA_FOV: 30,
+	CAMERA_Z: 900,
+	ANIMATION_DURATION: 1.0,
+	ROTATION_DURATION: 0.9,
+	BRIGHTNESS_ACTIVE: 1.0,
+	BRIGHTNESS_INACTIVE: 0.3,
+	DRAG_SENSITIVITY_FACTOR: 2,
+	WHEEL_SENSITIVITY: 0.0005,
+
+	// Debug options
+	SHOW_PLAY_INDICATOR: true, // Set to false to disable the "PLAY" flash indicator
+	PLAY_INDICATOR_FRAMES: 5, // How many frames to show the indicator
+};
