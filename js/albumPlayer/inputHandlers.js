@@ -22,9 +22,9 @@ export function createInputHandlers(
 		const index = Math.round(value * (state.numSlides - 1));
 		moveSlide(index);
 
-		// Broadcast slide changes to other clients (only if NOT master)
-		// Master device controls the navigation, slave devices can also navigate and broadcast
-		if (!isMaster && state.albumData[index]) {
+		// Broadcast slide changes to ALL clients (master and slaves)
+		// When anyone navigates, all devices follow
+		if (state.albumData[index]) {
 			sendToServer({
 				type: "setSource",
 				source: state.albumData[index].sourceId,

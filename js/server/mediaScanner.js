@@ -42,12 +42,6 @@ function scanMediaFiles(dirPath, urlPrefix) {
 	}));
 }
 
-/**
- * Scans album subdirectories (1, 2, 3, etc.)
- * @param {string} albumPath - Path to album directory
- * @param {string} urlPrefix - URL prefix for the album
- * @returns {Object} Album catalog with subfolders
- */
 function scanAlbum(albumPath, urlPrefix) {
 	if (!fs.existsSync(albumPath)) return null;
 
@@ -68,13 +62,6 @@ function scanAlbum(albumPath, urlPrefix) {
 
 	return album;
 }
-
-/**
- * Scans music directory for MP3 files
- * @param {string} musicPath - Path to music directory
- * @param {string} urlPrefix - URL prefix for music
- * @returns {Object[]} Array of music file objects
- */
 function scanMusic(musicPath, urlPrefix) {
 	if (!fs.existsSync(musicPath)) return [];
 
@@ -90,21 +77,6 @@ function scanMusic(musicPath, urlPrefix) {
 	}));
 }
 
-/**
- * Scans the media directory and creates a catalog of all available media
- * New structure:
- * media/
- *   [project_name]/
- *     poster/       (png sequence)
- *     phone/        (png sequence)
- *     music/        (mp3 files)
- *     billboard/    (png sequence)
- *     album/        (png sequence with subfolders 1/, 2/, 3/)
- *     thumb.png     (single thumbnail image)
- *
- * @param {string} basePath - Base path to the media directory
- * @returns {Object} Catalog of all media files organized by project
- */
 function scanMediaDirectories(basePath) {
 	const catalog = {};
 
@@ -113,7 +85,6 @@ function scanMediaDirectories(basePath) {
 		return catalog;
 	}
 
-	// Get all project folders (skip old mp4 and png_sequence folders)
 	const projectFolders = fs
 		.readdirSync(basePath, { withFileTypes: true })
 		.filter((dirent) => dirent.isDirectory())
@@ -151,30 +122,14 @@ function scanMediaDirectories(basePath) {
 	return catalog;
 }
 
-/**
- * Get list of all project names
- * @param {Object} catalog - The media catalog
- * @returns {string[]} Array of project names
- */
 function getProjectNames(catalog) {
 	return Object.keys(catalog);
 }
 
-/**
- * Get project data by name
- * @param {Object} catalog - The media catalog
- * @param {string} projectName - Name of the project
- * @returns {Object|null} Project data or null if not found
- */
 function getProject(catalog, projectName) {
 	return catalog[projectName] || null;
 }
 
-/**
- * Get all thumbnails
- * @param {Object} catalog - The media catalog
- * @returns {Object[]} Array of thumbnail objects with project info
- */
 function getAllThumbnails(catalog) {
 	const thumbnails = [];
 
@@ -190,11 +145,6 @@ function getAllThumbnails(catalog) {
 	return thumbnails;
 }
 
-/**
- * Get a summary of all available media
- * @param {Object} catalog - The media catalog
- * @returns {Object} Summary with counts and project lists
- */
 function getMediaSummary(catalog) {
 	const summary = {
 		projectCount: Object.keys(catalog).length,

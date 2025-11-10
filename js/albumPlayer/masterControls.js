@@ -61,7 +61,7 @@ export function createMasterControls(state, isMaster) {
 	}
 
 	function setup(sendToServer, playIndicator) {
-		if (!isMaster) return; // Only setup if master
+		// if (!isMaster) return; // Only setup if master
 
 		playPauseBtn.addEventListener("click", () =>
 			onPlayPause(sendToServer, playIndicator)
